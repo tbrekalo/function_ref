@@ -7,80 +7,86 @@
 
 namespace tb::detail {
 
-template <bool IsNoexcept, class R, class... Args>
-class function_ref_impl {
- private:
-  using fun_ptr_t = R (*)(void*, Args...) noexcept(IsNoexcept);
+template <class Signature>
+struct function_ref_traits;
+
+template <class R, class... Args>
+struct function_ref_traits<R(Args...)> {
+  static auto constexpr is_noexcept = false;
+
+  using signature = R(Args...);
+
+  template <class Fn>
+  static constexpr auto is_compatible_v = std::is_invocable_r_v<R, Fn, Args...>;
+};
+
+struct function_ref_base {
+  union storage_t {
+    constexpr storage_t() noexcept = default;
+
+    template <class T, class = std::enable_if_t<std::is_object_v<T>>>
+    constexpr storage_t(T* t) noexcept : obj_ptr_(t) {}
+
+    template <class T, class = std::enable_if_t<std::is_object_v<T>>>
+    constexpr storage_t(T const* t) noexcept : obj_ptr_const_(t) {}
+
+    template <class T,
+              std::enable_if_t<std::is_function_v<T>, std::nullptr_t> = nullptr>
+    constexpr storage_t(T* t) noexcept
+        : fun_ptr_(reinterpret_cast<void (*)()>(t)) {}
+
+    void* obj_ptr_ = nullptr;
+    void const* obj_ptr_const_;
+    void (*fun_ptr_)();
+  };
 
   template <class T>
-  static constexpr auto make_invoker() noexcept -> fun_ptr_t {
-    return [](void* fun_ptr, Args... args) noexcept(IsNoexcept) -> R {
-      std::invoke(*reinterpret_cast<std::add_pointer_t<T>>(fun_ptr), args...);
-    };
+  static constexpr auto get(storage_t storage) noexcept {
+    if constexpr (std::is_function_v<T>) {
+      return storage.fun_ptr_;
+    } else if (std::is_const_v<T>) {
+      return storage.obj_ptr_const_;
+    } else if (std::is_object_v<T>) {
+      return storage.obj_ptr_;
+    }
   }
-
-  template <class T>
-  static constexpr auto is_noexcept_compliant =
-      std::conditional_t<IsNoexcept, std::is_nothrow_invocable_r<R, T, Args...>,
-                         std::is_invocable_r<R, T, Args...>>::value;
-
-  template <class T>
-  using enable_if_compliant =
-      std::enable_if_t<std::is_function_v<T> && is_noexcept_compliant<T>>;
-
- public:
-  constexpr function_ref_impl() = delete;
-
-  template <class F, class = enable_if_compliant<F>>
-  explicit constexpr function_ref_impl(F&& fun) noexcept
-      : fun_ptr_(std::addressof(fun)), invoker_(make_invoker<F>()) {}
-
-  constexpr auto operator()(Args... args) noexcept(IsNoexcept) -> R {
-    return invoker_(fun_ptr_, std::move(args)...);
-  }
-
- protected:
-  void* fun_ptr_;
-  fun_ptr_t invoker_;
 };
 
 }  // namespace tb::detail
 
 namespace tb {
 
-template <class Sig>
+template <class Signature>
 class function_ref;
 
-#define FN_REF_SPEC(is_noexcept, ...)                                         \
-  template <class R, class... Args>                                           \
-  class function_ref<R(Args...) __VA_ARGS__>                                  \
-      : public detail::function_ref_impl<is_noexcept, R, Args...> {           \
-    template <class F>                                                        \
-    explicit constexpr function_ref(F&& fun)                                  \
-        : detail::function_ref_impl<is_noexcept, R, Args...>(                 \
-              std::forward<F>(fun)) {}                                        \
-                                                                              \
-    friend constexpr auto operator==(function_ref lhs,                        \
-                                     function_ref rhs) noexcept -> bool {     \
-      return lhs.fun_ptr_ == rhs.fun_ptr_;                                    \
-    }                                                                         \
-                                                                              \
-    friend constexpr auto operator!=(function_ref lhs,                        \
-                                     function_ref rhs) noexcept -> bool {     \
-      return !(lhs == rhs);                                                   \
-    }                                                                         \
-                                                                              \
-    friend constexpr auto swap(function_ref& lhs, function_ref& rhs) noexcept \
-        -> void {                                                             \
-      if (lhs != rhs) {                                                       \
-        std::swap(lhs.fun_ptr_, rhs.fun_ptr_);                                \
-      }                                                                       \
-    }                                                                         \
-  };
+template <class R, class... Args>
+class function_ref<R(Args...)> : detail::function_ref_base {
+  using traits = detail::function_ref_traits<R(Args...)>;
 
-FN_REF_SPEC(false)
-FN_REF_SPEC(true, noexcept)
-#undef FN_REF_SPEC
+  using invoker_t = R(storage_t, Args...);
+  using invoker_ptr_t = std::add_pointer_t<invoker_t>;
+
+ public:
+  template <class F,
+            class = std::enable_if_t<traits::template is_compatible_v<F> and
+                                     std::is_function_v<F>>>
+  explicit constexpr function_ref(F* fun_ptr)
+      : storage_(fun_ptr),
+        invoker_ptr_([](storage_t storage,
+                        Args... args) noexcept(traits::is_noexcept) -> R {
+          return std::invoke(reinterpret_cast<F*>(get<F>(storage)),
+                             std::forward<Args>(args)...);
+        }) {}
+
+  constexpr auto operator()(Args... args) const noexcept(traits::is_noexcept)
+      -> R {
+    return invoker_ptr_(storage_, std::forward<Args>(args)...);
+  }
+
+ private:
+  storage_t storage_;
+  invoker_ptr_t invoker_ptr_;
+};
 
 }  // namespace tb
 
