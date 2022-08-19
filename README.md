@@ -1,4 +1,5 @@
 # function_ref
+![workflow](https://github.com/tbrekalo/function_ref/actions/workflows/function_ref.yml/badge.svg)</br>
 Yet another c++ `function_ref` implementation (honestly, reimplementation). 
 
 `tb::function_ref<Signature>` aims to follow 
@@ -24,6 +25,10 @@ for (auto i = 0; i < 10; ++i) {
   do_smart_stuff(i);
 }
 ```
+
+### Supported compilers
+* gcc 7.5+
+* clang 13+
 
 ### References
 * [P0792R8](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p0792r8.html) 

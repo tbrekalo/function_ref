@@ -1,4 +1,4 @@
-name: biotypes CI
+name: function_ref CI
 
 on:
   push:
@@ -14,28 +14,26 @@ jobs:
     strategy:
       matrix:
         compiler:
-          - g++
-          - g++-9
-          - clang++
-          - clang++-10
+          - g++-7
+          - clang++-13
 
     runs-on: ubuntu-20.04 
 
     steps:
       - uses: actions/checkout@v2
 
-      - if: ${{ matrix.compiler == 'g++-9' }}
+      - if: ${{ matrix.compiler == 'g++-7' }}
         name: Setup GCC
         uses: egor-tensin/setup-gcc@v1
         with:
-          version: "9"
+          version: "7"
           platform: x64
 
-      - if: ${{ matrix.compiler == 'clang++-10' }}
+      - if: ${{ matrix.compiler == 'clang++-13' }}
         name: Setup Clang
         uses: egor-tensin/setup-clang@v1
         with:
-          version: "10"
+          version: "13"
           platform: x64
 
       - name: Configure CMake
@@ -48,4 +46,4 @@ jobs:
 
       - name: Test
         working-directory: ${{ github.workspace }}/build
-        run: bin/tb_function_ref_tes
+        run: ./tb_function_ref_test
