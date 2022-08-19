@@ -1,6 +1,11 @@
 #ifndef TB_FUNCTION_REF_
 #define TB_FUNCTION_REF_
 
+/*
+  "Bad artists copy. Good artists steal."
+    - Pablo Picasso
+*/
+
 #include <memory>
 #include <type_traits>
 
