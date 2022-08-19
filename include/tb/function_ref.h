@@ -144,6 +144,9 @@ FUN_REF(const noexcept)
 
 #undef FUN_REF
 
+template <class F>
+function_ref(F*) -> function_ref<std::enable_if_t<std::is_function_v<F>, F>>;
+
 }  // namespace tb
 
 #endif /* TB_FUNCTION_REF_ */
