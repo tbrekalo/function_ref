@@ -28,3 +28,4 @@ for (auto i = 0; i < 10; ++i) {
 ### references
 [P0792R8](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p0792r8.html)
 [Vittorio Romeo's implementation](https://github.com/vittorioromeo/Experiments/blob/master/function_ref.cpp)
+[zhihaoy's implementation](https://github.com/zhihaoy/nontype_functional)
