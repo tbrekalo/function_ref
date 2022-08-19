@@ -1,4 +1,4 @@
-find_package(Catch2 3 REQUIRED)
+find_package(Catch2 3 QUIET)
 if (NOT Catch2_FOUND)
   include(FetchContent)
   FetchContent_Declare(
