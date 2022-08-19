@@ -1,0 +1,51 @@
+name: biotypes CI
+
+on:
+  push:
+  pull_request:
+    branches:
+      - master
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        compiler:
+          - g++
+          - g++-9
+          - clang++
+          - clang++-10
+
+    runs-on: ubuntu-20.04 
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - if: ${{ matrix.compiler == 'g++-9' }}
+        name: Setup GCC
+        uses: egor-tensin/setup-gcc@v1
+        with:
+          version: "9"
+          platform: x64
+
+      - if: ${{ matrix.compiler == 'clang++-10' }}
+        name: Setup Clang
+        uses: egor-tensin/setup-clang@v1
+        with:
+          version: "10"
+          platform: x64
+
+      - name: Configure CMake
+        run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+        env:
+          CXX: ${{ matrix.compiler }}
+
+      - name: Build
+        run: cmake --build ${{ github.workspace }}/build --config ${{ env.BUILD_TYPE }} -j 2
+
+      - name: Test
+        working-directory: ${{ github.workspace }}/build
+        run: bin/tb_function_ref_tes
